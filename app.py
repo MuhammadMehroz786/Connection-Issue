@@ -98,7 +98,10 @@ if DATABASE_URL:
         'pool_recycle': 300,
         'pool_size': 20,
         'max_overflow': 10,
-        "connect_args": {"sslmode": "require"}
+        "connect_args": {
+            "sslmode": "prefer",
+            "connect_timeout": 10
+        }
     }
 else:
     # SQLite for local development
@@ -112,14 +115,15 @@ else:
         logger.info(f"📁 Using local SQLite database: {DATABASE_PATH}")
     
     app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{DATABASE_PATH}?timeout=30'
-    
+
     # SQLite-specific engine options
     app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
         'pool_pre_ping': True,
         'pool_recycle': 300,
-        'pool_size': 20,
-        'max_overflow': 10,
-        "connect_args": {"sslmode": "require"}
+        'connect_args': {
+            "timeout": 30,
+            "check_same_thread": False
+        }
     }
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -143,20 +147,55 @@ Session(app)
 
 logger.info("✅ Database-backed sessions initialized (no cookie size limits)")
 
-# Create tables and detect stopped jobs
-with app.app_context():
-    db.create_all()
-    logger.info("Database tables created successfully")
+# Create tables and detect stopped jobs with retry logic
+def initialize_database(max_retries=5, retry_delay=2):
+    """Initialize database with retry logic for Railway deployment"""
+    for attempt in range(1, max_retries + 1):
+        try:
+            with app.app_context():
+                logger.info(f"🔄 Attempting database connection (attempt {attempt}/{max_retries})...")
 
-    # Detect AI jobs that were running when server stopped and mark them as 'stopped'
-    stuck_jobs = AIJob.query.filter_by(status='running').all()
-    if stuck_jobs:
-        logger.warning(f"Found {len(stuck_jobs)} AI jobs stuck in 'running' state - marking as 'stopped'")
-        for job in stuck_jobs:
-            job.status = 'stopped'
-            job.error_message = 'Job was interrupted (server restart or crash)'
-        db.session.commit()
-        logger.info(f"Marked {len(stuck_jobs)} jobs as 'stopped' - these can be resumed")
+                # Test connection first
+                db.engine.connect()
+                logger.info("✅ Database connection successful")
+
+                # Create tables
+                db.create_all()
+                logger.info("✅ Database tables created successfully")
+
+                # Detect AI jobs that were running when server stopped and mark them as 'stopped'
+                stuck_jobs = AIJob.query.filter_by(status='running').all()
+                if stuck_jobs:
+                    logger.warning(f"Found {len(stuck_jobs)} AI jobs stuck in 'running' state - marking as 'stopped'")
+                    for job in stuck_jobs:
+                        job.status = 'stopped'
+                        job.error_message = 'Job was interrupted (server restart or crash)'
+                    db.session.commit()
+                    logger.info(f"Marked {len(stuck_jobs)} jobs as 'stopped' - these can be resumed")
+
+                return True
+
+        except Exception as e:
+            logger.error(f"❌ Database connection attempt {attempt}/{max_retries} failed: {str(e)}")
+
+            if attempt < max_retries:
+                logger.info(f"⏳ Retrying in {retry_delay} seconds...")
+                time.sleep(retry_delay)
+                retry_delay *= 1.5  # Exponential backoff
+            else:
+                logger.error("=" * 80)
+                logger.error("❌ CRITICAL: Could not connect to database after all retries")
+                logger.error("=" * 80)
+                logger.error("Possible solutions:")
+                logger.error("1. Check that DATABASE_URL is correctly set in Railway")
+                logger.error("2. Verify PostgreSQL service is running in Railway dashboard")
+                logger.error("3. Check Railway logs for PostgreSQL service errors")
+                logger.error("4. Ensure PostgreSQL service is linked to your app")
+                logger.error("=" * 80)
+                raise
+
+# Initialize database with retry logic
+initialize_database()
 
 # Initialize services (strip whitespace from API keys to prevent header errors)
 shopify_service = ShopifyService(
