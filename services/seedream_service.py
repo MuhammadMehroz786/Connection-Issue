@@ -341,8 +341,8 @@ A compelling, photorealistic lifestyle image showing the product being used in i
                 "image": encoded_images,
                 "strength": 0.7,
                 "guidance_scale": 7.5,
-                "width": 2048,
-                "height": 2048,
+                "height":"2048",
+                "widht": "2048",
                 "num_images": 1
             }
 
@@ -351,11 +351,45 @@ A compelling, photorealistic lifestyle image showing the product being used in i
             logger.info(f"   Variation: {variation}")
             logger.info(f"   Reference images: {len(encoded_images)}")
 
-            response = requests.post(self.base_url, json=payload, headers=headers, timeout=120)
-
-            if response.status_code != 200:
-                logger.error(f"❌ SeeDream API error: {response.status_code} - {response.text}")
-                return None
+            # Retry logic for timeout errors
+            max_retries = 2
+            timeout_seconds = 180  # Increased to 3 minutes
+            
+            for attempt in range(max_retries):
+                try:
+                    logger.info(f"   Attempt {attempt + 1}/{max_retries}...")
+                    response = requests.post(self.base_url, json=payload, headers=headers, timeout=timeout_seconds)
+                    
+                    if response.status_code != 200:
+                        logger.error(f"❌ SeeDream API error: {response.status_code} - {response.text}")
+                        if attempt < max_retries - 1:
+                            logger.info(f"   Retrying in 5 seconds...")
+                            import time
+                            time.sleep(5)
+                            continue
+                        return None
+                    
+                    # Success - break out of retry loop
+                    break
+                    
+                except requests.exceptions.Timeout:
+                    logger.warning(f"⏱️ Request timed out after {timeout_seconds}s (attempt {attempt + 1}/{max_retries})")
+                    if attempt < max_retries - 1:
+                        logger.info(f"   Retrying with fresh connection...")
+                        import time
+                        time.sleep(5)
+                        continue
+                    else:
+                        logger.error(f"❌ All retry attempts failed - SeeDream API timeout")
+                        return None
+                except requests.exceptions.RequestException as e:
+                    logger.error(f"❌ Request error: {str(e)}")
+                    if attempt < max_retries - 1:
+                        logger.info(f"   Retrying...")
+                        import time
+                        time.sleep(5)
+                        continue
+                    return None
 
             data = response.json()
 
@@ -397,5 +431,3 @@ A compelling, photorealistic lifestyle image showing the product being used in i
             import traceback
             logger.error(f"   Traceback: {traceback.format_exc()}")
             return None
-
-
