@@ -161,12 +161,20 @@ Return a JSON object with this structure:
    - Use proper HTML tags for structure and readability
 
 2. **REPLICATE EVERY VARIANT EXACTLY AS IT APPEARS**:
-   - Look for variant selectors in HTML: <select>, <option>, radio buttons, data attributes
-   - Common patterns:
+   - **CRITICAL: Check for JSON-LD structured data FIRST** (most reliable source):
+     * Look for <script type="application/ld+json"> tags
+     * Extract variant data from Schema.org Product markup
+     * Common pattern: "offers": [{{"sku": "ABC-2", "price": "114.00"}}, {{"sku": "ABC-3", "price": "138.00"}}...]
+     * SKUs often encode variant info: "TRP608-2" = 2ft, "TRP608-3" = 3ft, etc.
+     * Extract ALL offers/variants from the JSON-LD data with their exact prices
+
+   - Also look for variant selectors in HTML: <select>, <option>, radio buttons, data attributes
+   - Common HTML patterns:
      * <select name="size"><option>1ft</option><option>2ft</option>... → Extract ALL options
      * <input type="radio" value="Small"> → Extract ALL radio values
      * data-variant="Red" or data-size="Large" → Extract from data attributes
      * JavaScript variant arrays: variants: [{{"title": "1ft"}}, {{"title": "2ft"}}...] → Extract ALL
+
    - If the page shows a dropdown with "1ft, 2ft, 3ft, 4ft, 5ft, 6ft" → Create 6 separate variant entries
    - If the page shows "Small, Medium, Large" → Create 3 variant entries
    - DO NOT skip, combine, or summarize variants
@@ -187,11 +195,19 @@ Return a JSON object with this structure:
    - Preserve all formatting, units, and punctuation
 
 5. **EXTRACT ACTUAL PRICES FOR EACH VARIANT**:
-   - Look for price variations by variant in the content
-   - Common patterns: "1ft: £25", "2ft - £30", "Small (£20)", size dropdown with prices
+   - **PRIORITY 1: JSON-LD structured data** (most accurate):
+     * Extract prices from "offers" array in <script type="application/ld+json">
+     * Each offer has "price" field - use these exact values
+     * Match SKUs to variant sizes if SKU encodes size info
+
+   - **PRIORITY 2: HTML content**:
+     * Look for price variations by variant in the content
+     * Common patterns: "1ft: £25", "2ft - £30", "Small (£20)", size dropdown with prices
+
    - If different variants have different prices, extract each one
    - If all variants show the same price, use that price for all
    - DO NOT guess or calculate prices
+   - DO NOT use £0.00 or 0.00 - if no price found, use null
 
 6. **FAITHFUL IMAGE EXTRACTION**:
    - Extract ONLY images that appear in the page content
