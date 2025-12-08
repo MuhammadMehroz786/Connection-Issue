@@ -220,7 +220,7 @@ EXTRACT THE PRODUCT DATA EXACTLY AS IT APPEARS:"""
                     }
                 ],
                 temperature=0,
-                max_tokens=2000,
+                max_tokens=4096,  # Increased to accommodate detailed descriptions with HTML tables
                 response_format={"type": "json_object"}
             )
             
@@ -280,11 +280,13 @@ EXTRACT THE PRODUCT DATA EXACTLY AS IT APPEARS:"""
                 }]
             
             logger.info(f"✅ Extracted product: {product_data['title']} ({len(product_data['variants'])} variants)")
-            
+
             return product_data
-            
+
         except json.JSONDecodeError as e:
             logger.error(f"❌ Failed to parse JSON from OpenAI response: {str(e)}")
+            logger.error(f"❌ Response preview (first 500 chars): {json_str[:500] if 'json_str' in locals() else 'N/A'}")
+            logger.error(f"❌ Response preview (last 200 chars): {json_str[-200:] if 'json_str' in locals() else 'N/A'}")
             return None
         except Exception as e:
             logger.error(f"❌ Error extracting product data: {str(e)}")
