@@ -161,6 +161,12 @@ Return a JSON object with this structure:
    - Use proper HTML tags for structure and readability
 
 2. **REPLICATE EVERY VARIANT EXACTLY AS IT APPEARS**:
+   - Look for variant selectors in HTML: <select>, <option>, radio buttons, data attributes
+   - Common patterns:
+     * <select name="size"><option>1ft</option><option>2ft</option>... → Extract ALL options
+     * <input type="radio" value="Small"> → Extract ALL radio values
+     * data-variant="Red" or data-size="Large" → Extract from data attributes
+     * JavaScript variant arrays: variants: [{{"title": "1ft"}}, {{"title": "2ft"}}...] → Extract ALL
    - If the page shows a dropdown with "1ft, 2ft, 3ft, 4ft, 5ft, 6ft" → Create 6 separate variant entries
    - If the page shows "Small, Medium, Large" → Create 3 variant entries
    - DO NOT skip, combine, or summarize variants
@@ -309,8 +315,9 @@ EXTRACT THE PRODUCT DATA EXACTLY AS IT APPEARS:"""
         
         for i, page in enumerate(pages, 1):
             page_url = page.get('url', '')
-            page_content = page.get('markdown', '') or page.get('html', '')
-            
+            # Use HTML first (preserves variant selectors better), fallback to markdown
+            page_content = page.get('html', '') or page.get('markdown', '')
+
             if not page_content:
                 logger.warning(f"⏭️  Skipping page {i}/{len(pages)}: No content")
                 continue
@@ -357,8 +364,9 @@ EXTRACT THE PRODUCT DATA EXACTLY AS IT APPEARS:"""
         
         for i, page in enumerate(pages, 1):
             page_url = page.get('url', '')
-            page_content = page.get('markdown', '') or page.get('html', '')
-            
+            # Use HTML first (preserves variant selectors better), fallback to markdown
+            page_content = page.get('html', '') or page.get('markdown', '')
+
             if not page_content:
                 logger.warning(f"⏭️  Skipping page {i}/{len(pages)}: No content")
                 continue
