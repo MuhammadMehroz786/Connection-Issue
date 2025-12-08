@@ -106,30 +106,29 @@ class ProductExtractorService:
             # Truncate very long content to save tokens (keep first 8000 chars)
             truncated_content = page_content[:8000]
             
-            prompt = f"""Extract product information from this e-commerce page and format it for Shopify.
+            prompt = f"""Your task: EXACTLY REPLICATE the product data from this e-commerce page. DO NOT create, infer, or modify anything.
 
 URL: {page_url}
 
 Content:
 {truncated_content}
 
-Extract and return a JSON object with this EXACT structure:
+Return a JSON object with this structure:
 {{
-  "title": "Exact product name from the page",
-  "body_html": "Full product description in HTML format",
-  "vendor": "Brand or manufacturer name",
-  "product_type": "Category or type",
-  "tags": ["tag1", "tag2", "tag3"],
+  "title": "EXACT product name from the page (copy verbatim)",
+  "body_html": "<p>FULL detailed product description with ALL content from the page</p><table><tr><th>Specification</th><th>Value</th></tr><tr><td>Material</td><td>Steel</td></tr></table><ul><li>Feature 1</li><li>Feature 2</li></ul>",
+  "vendor": "Brand/manufacturer name from page",
+  "product_type": "Category from page",
+  "tags": ["tag1", "tag2"],
   "variants": [
     {{
-      "title": "Variant name (use the full product name if only one variant)",
+      "title": "Variant option text (e.g., '1ft', 'Red', 'Small')",
       "price": "29.99",
       "compare_at_price": "39.99",
       "sku": "SKU-123",
-      "option1": "Default",
+      "option1": "1ft",
       "option2": null,
-      "option3": null,
-      "inventory_quantity": 10
+      "option3": null
     }}
   ],
   "images": [
@@ -140,38 +139,73 @@ Extract and return a JSON object with this EXACT structure:
   ],
   "options": [
     {{
-      "name": "Option",
-      "values": ["Default"]
+      "name": "Length",
+      "values": ["1ft", "2ft", "3ft", "4ft", "5ft", "6ft"]
     }}
   ]
 }}
 
-IMPORTANT RULES:
-1. Extract the EXACT product title as shown on the page - do NOT modify it
-2. Extract ALL variants if multiple sizes/colors/options exist on the page
-3. **CRITICAL FOR VARIANTS - EACH VARIANT NEEDS ITS OWN PRICE**:
-   - CAREFULLY search the page content for variant-specific pricing
-   - Look for price tables, dropdown options with prices, or variant listings
-   - Common patterns: "Size S: £25", "Small - £25.00", "Option 1 (£30)", "1m x 2m: £45.99"
-   - Check for JavaScript data, JSON objects, or structured data with variant prices
-   - If you find a price selector or variant dropdown, extract the price for EACH option
-   - **DO NOT assume all variants have the same price** - look carefully for individual prices
-   - Only use the same price for all variants if you're absolutely certain they cost the same
-   - If variant prices are not clearly shown, look for patterns like "from £X" which indicates varying prices
-4. If only one variant exists, use "Default" for option1
-5. Use actual prices found on the page (remove currency symbols like £, $, €)
-6. **CRITICAL**: Extract ALL product image URLs from the markdown content
-   - Look for markdown images: ![alt](https://example.com/image.jpg)
-   - Look for HTML images: <img src="https://example.com/image.jpg">
-   - Look for direct URLs in the content
-   - Extract the FULL URL including https://
-   - Do NOT use placeholder URLs
-6. Create meaningful tags from the product category, features, and attributes
-7. Format body_html with proper HTML tags (<p>, <ul>, <li>, etc.)
-8. If information is missing, use null or empty array []
+🚨 CRITICAL RULES - EXACT REPLICATION ONLY:
+
+1. **EXTRACT FULL DETAILED DESCRIPTION WITH HTML TABLES**:
+   - Extract the COMPLETE product description - DO NOT summarize or shorten
+   - Look for specification tables, feature tables, size charts, dimension tables
+   - Convert tables to proper HTML <table> format with <tr>, <th>, <td> tags
+   - Common table patterns in markdown:
+     * "| Specification | Value |" → Convert to <table><tr><th>Specification</th><th>Value</th></tr>...
+     * "Material: Steel, Weight: 5kg" → Convert to table rows
+     * Any structured data with labels and values
+   - Preserve all formatting: <p> for paragraphs, <ul>/<li> for lists, <table> for tables
+   - Include ALL content sections: description, features, specifications, dimensions, materials, usage instructions
+   - If the page has multiple description sections, include ALL of them
+   - Use proper HTML tags for structure and readability
+
+2. **REPLICATE EVERY VARIANT EXACTLY AS IT APPEARS**:
+   - If the page shows a dropdown with "1ft, 2ft, 3ft, 4ft, 5ft, 6ft" → Create 6 separate variant entries
+   - If the page shows "Small, Medium, Large" → Create 3 variant entries
+   - DO NOT skip, combine, or summarize variants
+   - DO NOT create variants that don't exist on the page
+   - Copy the EXACT text from each option (including units, capitalization, spacing)
+
+3. **USE THE EXACT OPTION NAME FROM THE PAGE**:
+   - If the page says "Select Length:" → Use "Length" as the option name
+   - If the page says "Choose Size:" → Use "Size" as the option name
+   - If the page says "Colour:" → Use "Colour" (their spelling)
+   - DO NOT use generic names like "Option", "Option 1", "Title"
+   - DO NOT infer or create option names - copy them from the page labels
+
+4. **EXACT OPTION VALUES**:
+   - Copy option values character-for-character from the page
+   - If page shows "1ft" → use "1ft" (not "1 ft" or "12 inches")
+   - If page shows "Small (S)" → use "Small (S)" (not just "Small")
+   - Preserve all formatting, units, and punctuation
+
+5. **EXTRACT ACTUAL PRICES FOR EACH VARIANT**:
+   - Look for price variations by variant in the content
+   - Common patterns: "1ft: £25", "2ft - £30", "Small (£20)", size dropdown with prices
+   - If different variants have different prices, extract each one
+   - If all variants show the same price, use that price for all
+   - DO NOT guess or calculate prices
+
+6. **FAITHFUL IMAGE EXTRACTION**:
+   - Extract ONLY images that appear in the page content
+   - Look for: ![alt](URL), <img src="URL">, or direct image URLs
+   - Include ALL product images in the order they appear
+   - Use complete URLs including https://
+
+7. **NO CREATION OR INFERENCE**:
+   - DO NOT add tags not mentioned on the page
+   - DO NOT create descriptions if missing
+   - DO NOT infer vendor names
+   - Only extract what explicitly exists on the page
+
+8. **Single-variant products**:
+   - If NO selectors/dropdowns exist → option1="Default", options=[{{"name": "Title", "values": ["Default Title"]}}]
+   - Do NOT create fake variants for single-variant products
+
 9. Return ONLY valid JSON, no additional text
 
-Extract the product data now:"""
+EXTRACT THE PRODUCT DATA EXACTLY AS IT APPEARS:"""
 
             response = self.client.chat.completions.create(
                 model=self.model,
