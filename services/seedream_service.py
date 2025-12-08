@@ -341,7 +341,8 @@ A compelling, photorealistic lifestyle image showing the product being used in i
                 "image": encoded_images,
                 "strength": 0.7,
                 "guidance_scale": 7.5,
-                "size": "2K",
+                "width": 2048,
+                "height": 2048
                 "num_images": 1
             }
 
@@ -396,3 +397,4 @@ A compelling, photorealistic lifestyle image showing the product being used in i
             import traceback
             logger.error(f"   Traceback: {traceback.format_exc()}")
             return None
+
