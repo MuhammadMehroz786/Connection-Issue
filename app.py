@@ -119,7 +119,7 @@ else:
         'pool_recycle': 300,
         'pool_size': 20,
         'max_overflow': 10,
-        'connect_args': {'timeout': 30, 'check_same_thread': False}
+        "connect_args": {"sslmode": "require"}
     }
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
