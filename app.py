@@ -17,7 +17,7 @@ from models import db, ScrapeJob, Product, AIProduct, AIProductVariant, AIProduc
 from database import DatabaseService
 from services.shopify_service import ShopifyService
 from services.openai_service import OpenAIService
-from services.gemini_service import GeminiService, GeminiQuotaExhaustedError
+# from services.gemini_service import GeminiService, GeminiQuotaExhaustedError  # Not used - SeeDream is active
 from services.flux_service import FluxService
 from services.product_mapper import ProductMapper
 from services.image_processor import ImageProcessor
@@ -222,16 +222,16 @@ db_service = DatabaseService()
 executor = ThreadPoolExecutor(max_workers=8)
 
 # Parallel processing executor (configurable workers for Pro Mode)
-# Increased to 4 workers with 10 Gemini keys for faster parallel processing
+# Increased to 4 workers for faster parallel processing
 PARALLEL_WORKERS = int(os.getenv('PARALLEL_WORKERS', 4))
 
 # ==================== GLOBAL RATE LIMITERS ====================
-# These ensure we never hit API rate limits for Gemini, OpenAI, or Shopify
+# These ensure we never hit API rate limits for Image Service, OpenAI, or Shopify
 # Semaphores limit concurrent API calls across all parallel workers
 
-# Gemini Rate Limiter: With 10 API keys, allow 10 concurrent calls for maximum speed
-gemini_rate_limiter = threading.Semaphore(10)
-GEMINI_DELAY = float(os.getenv('GEMINI_DELAY', 0.3))  # Reduced delay for faster processing with 10 keys
+# Image Service Rate Limiter: Allow concurrent image generation calls
+image_rate_limiter = threading.Semaphore(10)
+IMAGE_DELAY = float(os.getenv('IMAGE_DELAY', 0.3))  # Delay between image generation calls
 
 # OpenAI Rate Limiter: Increased for parallel processing across multiple stores
 openai_rate_limiter = threading.Semaphore(6)
@@ -1498,17 +1498,17 @@ def process_single_product(source_product, ai_job_id, fast_mode, created_counter
             # Edit TWO professional product images (rate-limited)
             # Image 1: Product in use (clean, no workers)
             try:
-                with gemini_rate_limiter:
+                with image_rate_limiter:
                     logger.info(f"[AI Job {ai_job_id}] 🎨 {IMAGE_MODEL.upper()}: Generating image 1/2 (Product in use - clean)...")
                     edited_url_1 = image_service.edit_product_image(
                         first_image.original_url,
                         source_product.title,
                         variation="product_in_use"
                     )
-                    time.sleep(GEMINI_DELAY)  # Delay after Gemini call
-            except GeminiQuotaExhaustedError as e:
-                # Quota exhausted - propagate the error up to be handled by process_ai_job_async
-                error_msg = f"Gemini quota exhausted: {str(e)}"
+                    time.sleep(IMAGE_DELAY)  # Delay after Gemini call
+            except Exception as e:
+                # Image service error - propagate the error up to be handled by process_ai_job_async
+                error_msg = f"Image service error: {str(e)}"
                 logger.error(f"[AI Job {ai_job_id}] ❌ {error_msg}")
                 raise  # Re-raise to be caught by process_ai_job_async
 
@@ -1524,17 +1524,17 @@ def process_single_product(source_product, ai_job_id, fast_mode, created_counter
             # Image 2: Installation scene with workers
             # IMPORTANT: Use Image 1 as input to ensure product consistency
             try:
-                with gemini_rate_limiter:
+                with image_rate_limiter:
                     logger.info(f"[AI Job {ai_job_id}] 🎨 {IMAGE_MODEL.upper()}: Generating image 2/2 (Installation scene) - using Image 1 as base...")
                     edited_url_2 = image_service.edit_product_image(
                         edited_url_1,  # Use Image 1 as input for consistency
                         source_product.title,
                         variation="installation"
                     )
-                    time.sleep(GEMINI_DELAY)  # Delay after Gemini call
-            except GeminiQuotaExhaustedError as e:
-                # Quota exhausted - propagate the error up to be handled by process_ai_job_async
-                error_msg = f"Gemini quota exhausted: {str(e)}"
+                    time.sleep(IMAGE_DELAY)  # Delay after Gemini call
+            except Exception as e:
+                # Image service error - propagate the error up to be handled by process_ai_job_async
+                error_msg = f"Image service error: {str(e)}"
                 logger.error(f"[AI Job {ai_job_id}] ❌ {error_msg}")
                 raise  # Re-raise to be caught by process_ai_job_async
 
