@@ -90,13 +90,15 @@ if DATABASE_URL:
     
     app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
     logger.info(f"🐘 Using PostgreSQL database (production mode)")
-    
+    app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
     # PostgreSQL-specific engine options
     app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
         'pool_pre_ping': True,
         'pool_recycle': 300,
         'pool_size': 20,
-        'max_overflow': 10
+        'max_overflow': 10,
+        "connect_args": {"sslmode": "require"}
     }
 else:
     # SQLite for local development
@@ -124,8 +126,22 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SQLALCHEMY_ECHO'] = False
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
+# Session configuration - Database-backed sessions (no cookie size limits)
+app.config['SESSION_TYPE'] = 'sqlalchemy'
+app.config['SESSION_PERMANENT'] = False
+app.config['SESSION_USE_SIGNER'] = True
+app.config['SESSION_KEY_PREFIX'] = 'shopify_session:'
+app.config['PERMANENT_SESSION_LIFETIME'] = 86400  # 24 hours
+
 # Initialize database
 db.init_app(app)
+
+# Initialize Flask-Session (must be after db.init_app)
+from flask_session import Session
+app.config['SESSION_SQLALCHEMY'] = db
+Session(app)
+
+logger.info("✅ Database-backed sessions initialized (no cookie size limits)")
 
 # Create tables and detect stopped jobs
 with app.app_context():
