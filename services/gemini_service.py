@@ -444,16 +444,25 @@ Based on the reference images provided, recreate this product with PERFECT ACCUR
 🎯 FINAL RESULT:
 A pristine, professional product photograph with COMPLETELY SEAMLESS PURE WHITE BACKGROUND - exactly like high-end e-commerce product listings (Amazon, Apple, etc.). The product should appear to cleanly float on a uniform white background with ZERO artifacts, halos, shadows, or variations. The background must be ONE SOLID WHITE COLOR from edge to edge with no circular halos or vignettes."""
             else:
-                # For other variations (installation), use the original lifestyle/application prompt
-                edit_prompt = f"""You are a professional lifestyle product photographer. Transform this product image into a compelling, real-world application photograph showing the product in use.
+                # For other variations (installation), use ultra-realistic real-world usage prompt
+                edit_prompt = f"""You are a professional documentary photographer capturing AUTHENTIC product usage in REAL-WORLD SCENARIOS. This must look like a GENUINE PHOTOGRAPH taken during actual product use - NOT a staged photo shoot or CGI render.
 
 PRODUCT: {product_title}
 {size_context}
 {edit_instructions}
 
-🎯 PHOTOGRAPHY OBJECTIVE:
-Create a REALISTIC, professional photograph showing this product being used in its INTENDED REAL-WORLD APPLICATION.
-The product SIZE and SCALE must be ACCURATE based on the product title and reference images provided.
+🎯 PHOTOGRAPHY OBJECTIVE - ULTRA-REALISTIC REAL-WORLD USAGE:
+Create a PHOTOREALISTIC image showing this EXACT product being actively used in its REAL-WORLD APPLICATION AND PURPOSE.
+This must look like a candid photograph captured during ACTUAL PRODUCT USE in a REALISTIC ENVIRONMENT.
+The product must be shown EXACTLY as it would be used in real life - not posed or staged.
+
+📸 CRITICAL: ULTRA-REALISTIC PHOTOGRAPHY REQUIREMENTS:
+- Must look like a REAL PHOTOGRAPH taken with a professional camera (NOT computer-generated)
+- Capture a GENUINE MOMENT of actual product usage (like documentary photography)
+- Natural imperfections that prove it's a real photo (subtle grain, authentic lighting variations)
+- Realistic depth of field with natural bokeh (blurred background)
+- Authentic environmental details and realistic clutter/context
+- The product SIZE and SCALE must be ACCURATE based on the product title and reference images
 
 
 ⚠️ CRITICAL: PRESERVE THE EXACT PRODUCT APPEARANCE
@@ -483,13 +492,14 @@ The product SIZE and SCALE must be ACCURATE based on the product title and refer
 
 SCENARIO TYPE: {scenario_type}
 
-👤 HUMAN INTERACTION:
-{"LIFESTYLE SCENARIO - Natural, Relaxed Usage:" if scenario_type == "LIFESTYLE" else "ACTIVE USE SCENARIO - Installation/Operation:"}
-{"- Show person naturally using or enjoying the product (sitting, relaxing, etc.)" if scenario_type == "LIFESTYLE" else "- Show professional worker, craftsman, or user actively installing or operating the product"}
-{"- Person dressed casually and comfortably for the setting" if scenario_type == "LIFESTYLE" else "- Person dressed appropriately (safety gear, work clothes, etc.)"}
-{"- Natural, relaxed posture - enjoying the product" if scenario_type == "LIFESTYLE" else "- Focus on HANDS and product interaction - holding, installing, operating"}
-{"- Person can be partially visible or in background" if scenario_type == "LIFESTYLE" else "- Person's face can be partially visible or out of focus"}
-{"- Authentic lifestyle moment captured naturally" if scenario_type == "LIFESTYLE" else "- Natural, authentic body language and realistic usage posture"}
+👤 HUMAN INTERACTION - SHOWING REAL PRODUCT USAGE:
+{"LIFESTYLE SCENARIO - Captured During Actual Product Use:" if scenario_type == "LIFESTYLE" else "REAL-WORLD APPLICATION SCENARIO - Product Being Used for Its Intended Purpose:"}
+{"- Show person ACTUALLY USING the product in real life (sitting on it, relaxing with it, interacting naturally)" if scenario_type == "LIFESTYLE" else "- Show worker/user ACTIVELY USING the product for its real-world purpose (installing, operating, applying, working with it)"}
+{"- Person engaged in the ACTUAL ACTIVITY this product is designed for" if scenario_type == "LIFESTYLE" else "- Person performing the REAL TASK this product is designed to help with"}
+{"- Capture the GENUINE MOMENT of product use - candid, not posed" if scenario_type == "LIFESTYLE" else "- Capture the ACTUAL APPLICATION - mid-installation, mid-operation, mid-task"}
+{"- Person dressed appropriately for real-world use of this product" if scenario_type == "LIFESTYLE" else "- Person dressed realistically for the job (safety gear, work attire, appropriate clothing)"}
+{"- Natural body language showing REAL interaction with the product" if scenario_type == "LIFESTYLE" else "- Focus on HANDS actively working with/using the product - realistic grip, natural positioning"}
+{"- Authentic moment that shows WHY someone would use this product" if scenario_type == "LIFESTYLE" else "- Demonstrate the product's REAL-WORLD PURPOSE through authentic usage"}
 
 🏗️ ENVIRONMENT & SETTING:
 {"LIFESTYLE SETTING - Beautiful, Natural Environment:" if scenario_type == "LIFESTYLE" else "WORKPLACE SETTING - Authentic Work Environment:"}
@@ -562,8 +572,17 @@ SCENARIO TYPE: {scenario_type}
 4. Natural, realistic usage scenario
 5. Professional, engaging composition that tells a story
 
-🎯 FINAL RESULT:
-A compelling, photorealistic lifestyle image showing the product being used in its intended real-world application, with appropriate human interaction and environment - professional, authentic, engaging, and completely text-free."""
+🎯 FINAL RESULT - ULTRA-REALISTIC PRODUCT USAGE PHOTOGRAPH:
+A GENUINE-LOOKING photograph that appears to be captured during ACTUAL REAL-WORLD PRODUCT USE. The image must look like:
+- A documentary photograph of someone ACTUALLY USING this product for its intended purpose
+- A candid moment captured during real product application (not a staged photoshoot)
+- Authentic environmental context showing WHERE and HOW this product is used in real life
+- Professional photography quality but with natural, realistic imperfections
+- The viewer should think: "This is a real photo of someone using this product"
+- Demonstrates the product's REAL-WORLD APPLICATION and PURPOSE through authentic usage
+- Photorealistic, engaging, authentic, and completely text-free on the product itself
+
+The image should answer: "What does it look like when someone ACTUALLY USES this product in real life?" Show the genuine, practical application."""
 
             logger.info(f"Nano Banana edit prompt: {edit_prompt[:120]}...")
 
