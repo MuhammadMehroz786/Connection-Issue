@@ -1,0 +1,445 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Shopify Automation{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">Dashboard</h1>
+    <p class="page-subtitle">Overview of your scraping and automation activity</p>
+</div>
+
+<!-- Stats Grid -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 32px;">
+    <div class="card" style="text-align: center; padding: 28px 24px;">
+        <div style="font-size: 40px; font-weight: 700; color: var(--charcoal); margin-bottom: 8px; font-family: 'Fraunces', serif;" id="totalJobs">0</div>
+        <div style="font-size: 13px; color: var(--warm-gray); font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em;">Scrape Jobs</div>
+    </div>
+
+    <div class="card" style="text-align: center; padding: 28px 24px;">
+        <div style="font-size: 40px; font-weight: 700; color: var(--charcoal); margin-bottom: 8px; font-family: 'Fraunces', serif;" id="totalProducts">0</div>
+        <div style="font-size: 13px; color: var(--warm-gray); font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em;">Total Products</div>
+    </div>
+
+    <div class="card" style="text-align: center; padding: 28px 24px;">
+        <div style="font-size: 40px; font-weight: 700; color: var(--charcoal); margin-bottom: 8px; font-family: 'Fraunces', serif;" id="totalAIJobs">0</div>
+        <div style="font-size: 13px; color: var(--warm-gray); font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em;">AI Jobs</div>
+    </div>
+
+    <div class="card" style="text-align: center; padding: 28px 24px;">
+        <div style="font-size: 40px; font-weight: 700; color: var(--charcoal); margin-bottom: 8px; font-family: 'Fraunces', serif;" id="aiProductsCreated">0</div>
+        <div style="font-size: 13px; color: var(--warm-gray); font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em;">AI Products</div>
+    </div>
+
+    <div class="card" style="text-align: center; padding: 28px 24px;">
+        <div style="font-size: 40px; font-weight: 700; color: var(--sage); margin-bottom: 8px; font-family: 'Fraunces', serif;" id="pushedProducts">0</div>
+        <div style="font-size: 13px; color: var(--warm-gray); font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em;">Pushed to Shopify</div>
+    </div>
+</div>
+
+<div class="card">
+    <!-- Tabs -->
+    <div style="display: flex; border-bottom: 1px solid var(--off-white); margin-bottom: 24px;">
+        <button id="scrapeJobsTab" class="tab-button active" onclick="switchTab('scrapeJobs')"
+                style="flex: 1; padding: 14px; background: none; border: none; color: var(--charcoal); font-size: 15px; font-weight: 600; cursor: pointer; border-bottom: 2px solid var(--charcoal); transition: all 0.2s;">
+            Recent Scrape Jobs
+        </button>
+        <button id="aiDupesTab" class="tab-button" onclick="switchTab('aiDupes')"
+                style="flex: 1; padding: 14px; background: none; border: none; color: var(--warm-gray); font-size: 15px; font-weight: 600; cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s;">
+            AI Jobs
+        </button>
+    </div>
+
+    <!-- Scrape Jobs Tab Content -->
+    <div id="scrapeJobsContent">
+        <div id="jobsLoader" class="loader"></div>
+        <div id="jobsContainer" style="display: none;">
+            <table id="jobsTable">
+                <thead>
+                    <tr>
+                        <th>Task ID</th>
+                        <th>Source URL</th>
+                        <th>Status</th>
+                        <th>Products</th>
+                        <th>Pushed</th>
+                        <th>Created</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+        <div id="jobsEmpty" style="display: none; text-align: center; padding: 60px 20px;">
+            <div style="font-size: 48px; margin-bottom: 16px; opacity: 0.2;">📦</div>
+            <div style="color: var(--warm-gray); margin-bottom: 20px;">No scrape jobs yet</div>
+            <a href="/scrape" class="btn btn-primary" style="text-decoration: none;">Start Scraping</a>
+        </div>
+    </div>
+
+    <!-- AI Dupes Tab Content -->
+    <div id="aiDupesContent" style="display: none;">
+        <div id="aiJobsLoader" class="loader"></div>
+        <div id="aiJobsContainer" style="display: none;">
+            <table id="aiJobsTable">
+                <thead>
+                    <tr>
+                        <th>Job ID</th>
+                        <th>Source Job</th>
+                        <th>Status</th>
+                        <th>AI Products</th>
+                        <th>Pushed</th>
+                        <th>Created</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+        <div id="aiJobsEmpty" style="display: none; text-align: center; padding: 60px 20px;">
+            <div style="font-size: 48px; margin-bottom: 16px; opacity: 0.2;">🤖</div>
+            <div style="color: var(--warm-gray); margin-bottom: 8px;">No AI jobs yet</div>
+            <div style="font-size: 14px; color: var(--warm-gray);">Create one from a scrape job above</div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let currentTab = 'scrapeJobs';
+
+    function switchTab(tab) {
+        currentTab = tab;
+
+        // Update tab buttons
+        document.querySelectorAll('.tab-button').forEach(btn => {
+            btn.style.color = 'var(--warm-gray)';
+            btn.style.borderBottom = '2px solid transparent';
+        });
+
+        if (tab === 'scrapeJobs') {
+            document.getElementById('scrapeJobsTab').style.color = 'var(--charcoal)';
+            document.getElementById('scrapeJobsTab').style.borderBottom = '2px solid var(--charcoal)';
+            document.getElementById('scrapeJobsContent').style.display = 'block';
+            document.getElementById('aiDupesContent').style.display = 'none';
+        } else {
+            document.getElementById('aiDupesTab').style.color = 'var(--charcoal)';
+            document.getElementById('aiDupesTab').style.borderBottom = '2px solid var(--charcoal)';
+            document.getElementById('scrapeJobsContent').style.display = 'none';
+            document.getElementById('aiDupesContent').style.display = 'block';
+            loadAIJobs();
+        }
+    }
+
+    async function loadStats() {
+        try {
+            const response = await fetch('/api/stats');
+            const stats = await response.json();
+
+            document.getElementById('totalJobs').textContent = stats.total_jobs || 0;
+            document.getElementById('totalProducts').textContent = stats.total_products || 0;
+            document.getElementById('totalAIJobs').textContent = stats.total_ai_jobs || 0;
+            document.getElementById('aiProductsCreated').textContent = stats.ai_products_created || 0;
+            document.getElementById('pushedProducts').textContent = stats.pushed_products || 0;
+        } catch (error) {
+            console.error('Error loading stats:', error);
+        }
+    }
+
+    async function loadJobs() {
+        try {
+            const response = await fetch('/api/jobs');
+            const data = await response.json();
+
+            document.getElementById('jobsLoader').style.display = 'none';
+
+            if (!data.jobs || data.jobs.length === 0) {
+                document.getElementById('jobsEmpty').style.display = 'block';
+                return;
+            }
+
+            document.getElementById('jobsContainer').style.display = 'block';
+
+            const tbody = document.querySelector('#jobsTable tbody');
+            tbody.innerHTML = '';
+
+            data.jobs.forEach(job => {
+                const row = tbody.insertRow();
+
+                // Show cancel button only for pending/running jobs
+                const showCancelButton = (job.status === 'pending' || job.status === 'running');
+                const cancelButtonHtml = showCancelButton ? `
+                    <button class="btn btn-danger" onclick="cancelScrapeJob(${job.id})" style="padding: 6px 12px; font-size: 13px; margin-right: 6px;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 4px;">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="15" y1="9" x2="9" y2="15"></line>
+                            <line x1="9" y1="9" x2="15" y2="15"></line>
+                        </svg>
+                        Cancel
+                    </button>
+                ` : '';
+
+                row.innerHTML = `
+                    <td><code style="font-size: 12px; background: var(--soft-white); padding: 2px 6px; border-radius: 4px;">${job.task_id}</code></td>
+                    <td style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${job.source_url}</td>
+                    <td><span class="badge badge-${job.status}">${job.status}</span></td>
+                    <td>${job.total_products} / ${job.products_processed}</td>
+                    <td><strong>${job.products_pushed || 0}</strong></td>
+                    <td style="color: var(--warm-gray); font-size: 13px;">${formatDate(job.created_at)}</td>
+                    <td>
+                        ${cancelButtonHtml}
+                        <button class="btn btn-secondary" onclick="viewProducts(${job.id})" style="padding: 6px 12px; font-size: 13px; margin-right: 6px;">
+                            View Products
+                        </button>
+                        <button class="btn btn-primary" onclick="createAIDupeJob(${job.id})" style="padding: 6px 12px; font-size: 13px;">
+                            Create AI Products
+                        </button>
+                    </td>
+                `;
+            });
+        } catch (error) {
+            console.error('Error loading jobs:', error);
+            document.getElementById('jobsLoader').style.display = 'none';
+            showAlert('Error loading jobs: ' + error.message, 'error');
+        }
+    }
+
+    async function loadAIJobs() {
+        try {
+            const response = await fetch('/api/ai-jobs');
+            const data = await response.json();
+
+            document.getElementById('aiJobsLoader').style.display = 'none';
+
+            if (!data.ai_jobs || data.ai_jobs.length === 0) {
+                document.getElementById('aiJobsEmpty').style.display = 'block';
+                return;
+            }
+
+            document.getElementById('aiJobsContainer').style.display = 'block';
+
+            const tbody = document.querySelector('#aiJobsTable tbody');
+            tbody.innerHTML = '';
+
+            data.ai_jobs.forEach(aiJob => {
+                const row = tbody.insertRow();
+
+                const statusBadge = aiJob.status === 'stopped' ? 'pending' : aiJob.status;
+
+                let actionButtons = '';
+                if (aiJob.status === 'stopped') {
+                    actionButtons = `
+                        <button class="btn btn-success" onclick="resumeAIJob(${aiJob.id})" style="padding: 6px 12px; font-size: 13px; margin-right: 6px;">
+                            Resume
+                        </button>
+                        <button class="btn btn-secondary" onclick="viewAIJob(${aiJob.id})" style="padding: 6px 12px; font-size: 13px;">
+                            View
+                        </button>
+                    `;
+                } else if (aiJob.status === 'completed') {
+                    actionButtons = `
+                        <button class="btn btn-primary" onclick="viewAIJob(${aiJob.id})" style="padding: 6px 12px; font-size: 13px;">
+                            View & Push
+                        </button>
+                    `;
+                } else if (aiJob.status === 'running') {
+                    actionButtons = `
+                        <button class="btn btn-danger" onclick="stopAIJob(${aiJob.id})" style="padding: 6px 12px; font-size: 13px; margin-right: 6px;">
+                            Stop
+                        </button>
+                        <button class="btn btn-secondary" onclick="viewAIJob(${aiJob.id})" style="padding: 6px 12px; font-size: 13px;">
+                            View
+                        </button>
+                    `;
+                } else {
+                    actionButtons = `
+                        <button class="btn btn-secondary" onclick="viewAIJob(${aiJob.id})" style="padding: 6px 12px; font-size: 13px;">
+                            View
+                        </button>
+                    `;
+                }
+
+                row.innerHTML = `
+                    <td><code style="font-size: 12px; background: var(--soft-white); padding: 2px 6px; border-radius: 4px;">ai_${aiJob.id}</code></td>
+                    <td><code style="font-size: 12px; background: var(--soft-white); padding: 2px 6px; border-radius: 4px;">${aiJob.source_job_task_id || 'N/A'}</code></td>
+                    <td><span class="badge badge-${statusBadge}">${aiJob.status}</span></td>
+                    <td><strong>${aiJob.ai_products_created || 0}</strong></td>
+                    <td><strong>${aiJob.products_pushed || 0}</strong></td>
+                    <td style="color: var(--warm-gray); font-size: 13px;">${formatDate(aiJob.created_at)}</td>
+                    <td>${actionButtons}</td>
+                `;
+            });
+        } catch (error) {
+            console.error('Error loading AI jobs:', error);
+            document.getElementById('aiJobsLoader').style.display = 'none';
+        }
+    }
+
+    async function createAIDupeJob(jobId) {
+        const useDefault = confirm('📦 Use default Shopify store?\n\nClick OK to use default store.\nClick Cancel to enter custom Shopify credentials.');
+
+        let customShopifyUrl = null;
+        let customAccessToken = null;
+
+        if (!useDefault) {
+            customShopifyUrl = prompt('Enter your Shopify store URL:\n(Example: my-store.myshopify.com)', '');
+            if (!customShopifyUrl) {
+                showAlert('Shopify URL is required', 'error');
+                return;
+            }
+
+            if (!customShopifyUrl.startsWith('http')) {
+                customShopifyUrl = 'https://' + customShopifyUrl;
+            }
+
+            customAccessToken = prompt('Enter your Shopify Admin API access token:\n(Example: shpat_...)', '');
+            if (!customAccessToken) {
+                showAlert('Access token is required', 'error');
+                return;
+            }
+
+            if (!confirm(`Custom Shopify Store Configuration:\n\nStore: ${customShopifyUrl}\nAccess Token: ${customAccessToken.substring(0, 15)}...\n\nContinue?`)) {
+                return;
+            }
+        }
+
+        const skipProducts = prompt('How many products to skip? (Enter 0 to process all, or 800 to skip first 800)', '0');
+        if (skipProducts === null) return;
+
+        const productOffset = parseInt(skipProducts) || 0;
+
+        const skipMessage = productOffset > 0 ? `\n\nSkipping first ${productOffset} products.` : '';
+        const storeMessage = useDefault ? '\n\nUsing DEFAULT Shopify store.' : `\n\nUsing CUSTOM store: ${customShopifyUrl}`;
+
+        if (!confirm(`This will create AI-enhanced products with OpenAI descriptions + Gemini AI images.${skipMessage}${storeMessage}\n\nContinue?`)) {
+            return;
+        }
+
+        try {
+            const requestBody = {
+                job_id: jobId,
+                product_offset: productOffset
+            };
+
+            if (!useDefault) {
+                requestBody.custom_shopify_url = customShopifyUrl;
+                requestBody.custom_access_token = customAccessToken;
+            }
+
+            const response = await fetch('/api/create-ai-job', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestBody)
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                showAlert(data.message, 'success');
+                switchTab('aiDupes');
+                loadStats();
+            } else {
+                showAlert(data.error, 'error');
+            }
+        } catch (error) {
+            showAlert('Error: ' + error.message, 'error');
+        }
+    }
+
+    function viewProducts(jobId) {
+        window.location.href = `/products?job_id=${jobId}`;
+    }
+
+    function viewAIJob(aiJobId) {
+        window.location.href = `/ai-job/${aiJobId}`;
+    }
+
+    async function cancelScrapeJob(jobId) {
+        if (!confirm('⚠️ Cancel this scrape job?\n\nThis will stop the Firecrawl crawl and mark the job as cancelled. This action cannot be undone.')) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/scrape-job/${jobId}/cancel`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                showAlert('✅ Scrape job cancelled successfully', 'success');
+                loadJobs(); // Reload the jobs table
+                loadStats(); // Reload stats
+            } else {
+                showAlert('❌ Error: ' + data.error, 'error');
+            }
+        } catch (error) {
+            showAlert('❌ Error cancelling job: ' + error.message, 'error');
+        }
+    }
+
+    async function resumeAIJob(aiJobId) {
+        if (!confirm('This will resume the AI job from where it stopped. Continue?')) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/resume-ai-job/${aiJobId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                showAlert(`Job resumed: ${data.already_processed} already processed, ${data.remaining} remaining (${data.mode})`, 'success');
+                loadAIJobs();
+                loadStats();
+            } else {
+                showAlert(data.error, 'error');
+            }
+        } catch (error) {
+            showAlert('Error: ' + error.message, 'error');
+        }
+    }
+
+    async function stopAIJob(aiJobId) {
+        if (!confirm('⚠️ This will stop the AI job execution. Products already processed will be saved. Continue?')) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/stop-ai-job/${aiJobId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                showAlert(`Job stopped: ${data.products_processed} products processed, ${data.products_remaining} remaining`, 'success');
+                loadAIJobs();
+                loadStats();
+            } else {
+                showAlert(data.error, 'error');
+            }
+        } catch (error) {
+            showAlert('Error: ' + error.message, 'error');
+        }
+    }
+
+    // Load data on page load
+    loadStats();
+    loadJobs();
+
+    // Refresh every 10 seconds
+    setInterval(() => {
+        loadStats();
+        loadJobs();
+        if (currentTab === 'aiDupes') {
+            loadAIJobs();
+        }
+    }, 10000);
+</script>
+{% endblock %}

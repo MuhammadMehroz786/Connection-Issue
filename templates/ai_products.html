@@ -1,0 +1,390 @@
+{% extends "base.html" %}
+
+{% block title %}AI Products - Shopify Automation{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">AI Products</h1>
+    <p class="page-subtitle">AI-enhanced products with generated descriptions and images</p>
+</div>
+
+<div class="card">
+    <!-- Filters Row -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 12px; margin-bottom: 20px;">
+        <div class="form-group" style="margin: 0;">
+            <label style="font-size: 13px;">Search</label>
+            <input type="text" id="searchInput" placeholder="Search products..." style="margin: 0;" oninput="filterProducts()">
+        </div>
+
+        <div class="form-group" style="margin: 0;">
+            <label style="font-size: 13px;">Date Created</label>
+            <select id="dateFilter" style="margin: 0;" onchange="filterProducts()">
+                <option value="">All Time</option>
+                <option value="today">Today</option>
+                <option value="last7days">Last 7 Days</option>
+                <option value="last30days">Last 30 Days</option>
+            </select>
+        </div>
+
+        <div class="form-group" style="margin: 0;">
+            <label style="font-size: 13px;">Status</label>
+            <select id="statusFilter" style="margin: 0;" onchange="filterProducts()">
+                <option value="">All Status</option>
+                <option value="pending">Pending</option>
+                <option value="approved">Approved</option>
+                <option value="rejected">Rejected</option>
+                <option value="pushed">Pushed</option>
+            </select>
+        </div>
+
+        <div class="form-group" style="margin: 0;">
+            <label style="font-size: 13px;">Sort By</label>
+            <select id="sortOrder" style="margin: 0;" onchange="filterProducts()">
+                <option value="newest">Newest First</option>
+                <option value="oldest">Oldest First</option>
+                <option value="title_asc">Title (A-Z)</option>
+                <option value="title_desc">Title (Z-A)</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Stats Bar -->
+    <div style="background: var(--soft-white); padding: 12px 16px; border-radius: 6px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
+        <div style="font-size: 14px; color: var(--warm-gray);">
+            <span id="filteredCount" style="font-weight: 600; color: var(--charcoal);">0</span> products shown
+            <span id="totalCount" style="opacity: 0.7;">(of 0 total)</span>
+        </div>
+        <button class="btn btn-secondary" onclick="loadProducts()" style="padding: 6px 14px; font-size: 13px;">Refresh</button>
+    </div>
+
+    <!-- Bulk Actions -->
+    <div style="display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap;">
+        <button class="btn btn-success" onclick="bulkAction('approve')" style="padding: 9px 16px; font-size: 13px;">
+            Approve Selected
+        </button>
+        <button class="btn btn-primary" onclick="bulkAction('push_to_shopify')" style="padding: 9px 16px; font-size: 13px;">
+            Push Selected
+        </button>
+        <button class="btn btn-danger" onclick="bulkAction('reject')" style="padding: 9px 16px; font-size: 13px;">
+            Reject Selected
+        </button>
+        <button class="btn btn-danger" onclick="bulkAction('delete')" style="padding: 9px 16px; font-size: 13px;">
+            Delete Selected
+        </button>
+        <div style="margin-left: auto; display: flex; align-items: center; font-size: 14px; color: var(--warm-gray);">
+            <span id="selectedCount">0 selected</span>
+        </div>
+    </div>
+
+    <!-- Primary Action -->
+    <div style="margin-bottom: 24px;">
+        <button class="btn btn-success" onclick="pushAllToShopify()" style="width: 100%; padding: 14px; font-size: 15px;">
+            Push All Products to Shopify
+        </button>
+    </div>
+
+    <!-- Progress (Same styling as products.html) -->
+    <div id="progressContainer" style="display: none; background: var(--soft-white); border: 1px solid var(--off-white); padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <div>
+                <strong style="font-size: 15px;">Push Progress</strong>
+                <span id="progressText" style="color: var(--warm-gray); margin-left: 12px; font-size: 14px;"></span>
+            </div>
+            <button id="cancelPushBtn" class="btn btn-danger" onclick="cancelPush()" style="padding: 7px 14px; font-size: 13px;">Cancel</button>
+        </div>
+        <div style="background: white; height: 32px; border-radius: 8px; overflow: hidden; border: 1px solid var(--off-white);">
+            <div id="progressBar" style="background: var(--sage); height: 100%; width: 0%; transition: width 0.3s ease; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 13px;">
+                <span id="progressPercent"></span>
+            </div>
+        </div>
+        <div id="progressMessage" style="margin-top: 12px; color: var(--warm-gray); font-size: 14px;"></div>
+    </div>
+
+    <!-- Loading -->
+    <div id="productsLoader" class="loader"></div>
+
+    <!-- Table -->
+    <div id="productsContainer" style="display: none;">
+        <table id="productsTable">
+            <thead>
+                <tr>
+                    <th style="width: 50px;">#</th>
+                    <th style="width: 40px;"><input type="checkbox" id="selectAll" onchange="toggleSelectAll()"></th>
+                    <th>Product</th>
+                    <th>Type</th>
+                    <th>Vendor</th>
+                    <th>Variants</th>
+                    <th>Status</th>
+                    <th style="text-align: center;">Pushed</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <!-- Empty State -->
+    <div id="productsEmpty" style="display: none; text-align: center; padding: 60px 20px;">
+        <div style="font-size: 48px; margin-bottom: 16px; opacity: 0.2;">🤖</div>
+        <div style="color: var(--warm-gray); margin-bottom: 8px;">No AI products yet</div>
+        <div style="font-size: 14px; color: var(--warm-gray);">Create AI versions from your scraped products</div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let allProducts = [];
+    let filteredProducts = [];
+    let selectedProducts = new Set();
+    let progressInterval = null;
+
+    async function loadProducts() {
+        try {
+            document.getElementById('productsLoader').style.display = 'block';
+            const response = await fetch('/api/ai-products?limit=10000');
+            const data = await response.json();
+
+            document.getElementById('productsLoader').style.display = 'none';
+
+            if (!data.ai_products || data.ai_products.length === 0) {
+                document.getElementById('productsEmpty').style.display = 'block';
+                return;
+            }
+
+            allProducts = data.ai_products;
+            filterProducts();
+        } catch (error) {
+            console.error('Error loading products:', error);
+            document.getElementById('productsLoader').style.display = 'none';
+            showAlert('Error loading products: ' + error.message, 'error');
+        }
+    }
+
+    function filterProducts() {
+        const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+        const dateFilter = document.getElementById('dateFilter').value;
+        const statusFilter = document.getElementById('statusFilter').value;
+        const sortOrder = document.getElementById('sortOrder').value;
+
+        filteredProducts = allProducts.filter(product => {
+            const matchesSearch = !searchTerm || product.title.toLowerCase().includes(searchTerm);
+            const matchesStatus = !statusFilter || product.status === statusFilter;
+            const matchesDate = !dateFilter || checkDateFilter(product.created_at, dateFilter);
+
+            return matchesSearch && matchesStatus && matchesDate;
+        });
+
+        // Sort
+        filteredProducts.sort((a, b) => {
+            switch(sortOrder) {
+                case 'newest': return new Date(b.created_at) - new Date(a.created_at);
+                case 'oldest': return new Date(a.created_at) - new Date(b.created_at);
+                case 'title_asc': return a.title.localeCompare(b.title);
+                case 'title_desc': return b.title.localeCompare(a.title);
+                default: return 0;
+            }
+        });
+
+        document.getElementById('filteredCount').textContent = filteredProducts.length;
+        document.getElementById('totalCount').textContent = `(of ${allProducts.length} total)`;
+
+        if (filteredProducts.length === 0) {
+            document.getElementById('productsContainer').style.display = 'none';
+            document.getElementById('productsEmpty').style.display = 'block';
+        } else {
+            document.getElementById('productsEmpty').style.display = 'none';
+            document.getElementById('productsContainer').style.display = 'block';
+            renderProducts();
+        }
+    }
+
+    function checkDateFilter(dateString, filter) {
+        const date = new Date(dateString);
+        const now = new Date();
+        const diff = now - date;
+
+        switch(filter) {
+            case 'today': return diff < 86400000;
+            case 'last7days': return diff < 604800000;
+            case 'last30days': return diff < 2592000000;
+            default: return true;
+        }
+    }
+
+    function renderProducts() {
+        const tbody = document.querySelector('#productsTable tbody');
+        tbody.innerHTML = '';
+
+        filteredProducts.forEach((product, index) => {
+            const row = tbody.insertRow();
+            const isAdded = product.status === 'pushed';
+            const checkIcon = isAdded ? '✓' : '—';
+            const checkColor = isAdded ? 'var(--sage)' : 'var(--light-gray)';
+
+            const imageHtml = product.images && product.images.length > 0 
+                ? `<img src="${product.images[0].src}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 6px; border: 1px solid var(--off-white);" alt="${product.title}" onerror="this.style.display='none'">`
+                : '';
+
+            row.innerHTML = `
+                <td style="text-align: center; font-weight: 600; color: var(--warm-gray); font-size: 13px;">${index + 1}</td>
+                <td><input type="checkbox" class="product-checkbox" data-id="${product.id}" onchange="updateSelectedCount()" ${isAdded ? 'disabled' : ''}></td>
+                <td>
+                    <div style="display: flex; gap: 12px; align-items: center;">
+                        ${imageHtml}
+                        <div>
+                            <div style="font-weight: 600; margin-bottom: 2px;">${product.title}</div>
+                            ${product.shopify_product_id ? `<div style="font-size: 12px; color: var(--warm-gray);">Shopify ID: ${product.shopify_product_id}</div>` : ''}
+                        </div>
+                    </div>
+                </td>
+                <td style="color: var(--warm-gray); font-size: 14px;">${product.product_type || '—'}</td>
+                <td style="color: var(--warm-gray); font-size: 14px;">${product.vendor || '—'}</td>
+                <td style="text-align: center; font-weight: 600;">${product.variants ? product.variants.length : 0}</td>
+                <td><span class="badge badge-${product.status}">${product.status}</span></td>
+                <td style="text-align: center; font-size: 18px; font-weight: 700; color: ${checkColor};">${checkIcon}</td>
+                <td>
+                    <button class="btn btn-secondary" onclick="viewProduct(${product.id})" style="padding: 6px 12px; font-size: 13px;">View</button>
+                    ${!isAdded ? `<button class="btn btn-danger" onclick="deleteProduct(${product.id})" style="padding: 6px 12px; font-size: 13px; margin-left: 6px;">Delete</button>` : ''}
+                </td>
+            `;
+        });
+
+        updateSelectedCount();
+    }
+
+    function toggleSelectAll() {
+        const selectAll = document.getElementById('selectAll').checked;
+        document.querySelectorAll('.product-checkbox:not([disabled])').forEach(cb => cb.checked = selectAll);
+        updateSelectedCount();
+    }
+
+    function updateSelectedCount() {
+        const checkboxes = document.querySelectorAll('.product-checkbox:checked:not([disabled])');
+        selectedProducts = new Set([...checkboxes].map(cb => parseInt(cb.dataset.id)));
+        document.getElementById('selectedCount').textContent = `${selectedProducts.size} selected`;
+    }
+
+    async function pushAllToShopify() {
+        const unpushedProducts = allProducts.filter(p => p.status !== 'pushed').map(p => p.id);
+        if (unpushedProducts.length === 0) {
+            showAlert('All products already pushed!', 'error');
+            return;
+        }
+        if (!confirm(`Push all ${unpushedProducts.length} unpushed products to Shopify?`)) return;
+
+        try {
+            const response = await fetch('/api/ai-products/bulk-action', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'push_to_shopify', product_ids: unpushedProducts })
+            });
+            const data = await response.json();
+            if (response.ok) {
+                document.getElementById('progressContainer').style.display = 'block';
+                startProgressTracking();
+            } else {
+                showAlert(data.error, 'error');
+            }
+        } catch (error) {
+            showAlert('Error: ' + error.message, 'error');
+        }
+    }
+
+    async function bulkAction(action) {
+        if (selectedProducts.size === 0) {
+            showAlert('Please select at least one product', 'error');
+            return;
+        }
+
+        const actionText = { 'approve': 'approve', 'reject': 'reject', 'delete': 'delete', 'push_to_shopify': 'push to Shopify' }[action];
+        if (!confirm(`${actionText} ${selectedProducts.size} product(s)?`)) return;
+
+        try {
+            const response = await fetch('/api/ai-products/bulk-action', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action, product_ids: Array.from(selectedProducts) })
+            });
+            const data = await response.json();
+            if (response.ok) {
+                if (action === 'push_to_shopify') {
+                    document.getElementById('progressContainer').style.display = 'block';
+                    startProgressTracking();
+                } else {
+                    showAlert(data.message, 'success');
+                    loadProducts();
+                }
+            } else {
+                showAlert(data.error, 'error');
+            }
+        } catch (error) {
+            showAlert('Error: ' + error.message, 'error');
+        }
+    }
+
+    async function startProgressTracking() {
+        progressInterval = setInterval(async () => {
+            try {
+                const response = await fetch('/api/ai-push-progress');
+                const progress = await response.json();
+                const percent = progress.total > 0 ? Math.round((progress.completed / progress.total) * 100) : 0;
+
+                document.getElementById('progressBar').style.width = percent + '%';
+                document.getElementById('progressPercent').textContent = percent + '%';
+                document.getElementById('progressText').textContent = `${progress.completed} / ${progress.total}`;
+
+                if (progress.current_product) {
+                    document.getElementById('progressMessage').textContent = `Currently: ${progress.current_product}`;
+                }
+
+                if (progress.status === 'completed' || progress.status === 'cancelled') {
+                    clearInterval(progressInterval);
+                    document.getElementById('progressContainer').style.display = 'none';
+                    showAlert(progress.status === 'completed' ? 'All products pushed!' : 'Push cancelled', 'success');
+                    loadProducts();
+                }
+            } catch (error) {
+                console.error('Error tracking progress:', error);
+            }
+        }, 1000);
+    }
+
+    async function cancelPush() {
+        if (!confirm('Cancel push operation?')) return;
+        try {
+            await fetch('/api/cancel-ai-push', { method: 'POST' });
+            clearInterval(progressInterval);
+            document.getElementById('progressContainer').style.display = 'none';
+            showAlert('Push cancelled', 'info');
+            loadProducts();
+        } catch (error) {
+            showAlert('Error: ' + error.message, 'error');
+        }
+    }
+
+    async function viewProduct(productId) {
+        alert('View product detail - implement modal similar to products.html');
+    }
+
+    async function deleteProduct(productId) {
+        if (!confirm('Delete this AI product?')) return;
+        try {
+            const response = await fetch(`/api/ai-products/${productId}`, { method: 'DELETE' });
+            const data = await response.json();
+            if (response.ok) {
+                showAlert('Product deleted', 'success');
+                loadProducts();
+            } else {
+                showAlert(data.error, 'error');
+            }
+        } catch (error) {
+            showAlert('Error: ' + error.message, 'error');
+        }
+    }
+
+    loadProducts();
+    setInterval(() => { if (!progressInterval) loadProducts(); }, 10000);
+</script>
+{% endblock %}
