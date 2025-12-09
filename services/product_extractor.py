@@ -179,7 +179,7 @@ Return a JSON object with this structure:
    **PRIORITY 1: JSON-LD structured data** (most reliable):
      * Look for <script type="application/ld+json"> tags
      * Extract variant data from Schema.org Product markup
-     * Pattern: "offers": [{{"sku": "ABC-2", "price": "114.00"}}, {{"sku": "ABC-3", "price": "138.00"}}...]
+     * Pattern: "offers": [{{{{"sku": "ABC-2", "price": "114.00"}}}}, {{{{"sku": "ABC-3", "price": "138.00"}}}}...]
      * SKUs often encode variant: "TRP608-2" = 2ft, "TRP608-3" = 3ft, etc.
      * Extract ALL offers/variants from JSON-LD with their EXACT prices
 
@@ -187,7 +187,7 @@ Return a JSON object with this structure:
      * <select name="size"><option>1ft</option><option>2ft</option>... → Extract ALL options
      * <input type="radio" value="Small"> → Extract ALL radio values
      * data-variant="Red" or data-size="Large" → Extract from data attributes
-     * JavaScript: variants: [{{"title": "1ft"}}, {{"title": "2ft"}}...] → Extract ALL
+     * JavaScript: variants: [{{{{"title": "1ft"}}}}, {{{{"title": "2ft"}}}}...] → Extract ALL
 
    **Examples of EXACT extraction:**
    - Page shows: "1ft, 2ft, 3ft, 4ft, 5ft, 6ft" → Create 6 variant entries (ALL of them)
@@ -634,3 +634,4 @@ EXTRACT THE PRODUCT DATA EXACTLY AS IT APPEARS:"""
         ]
         
         logger.info(f"✅ Merged successfully: '{clean_title}' (now has {len(existing_variants)} variants)")
+
