@@ -106,7 +106,14 @@ class ProductExtractorService:
             # Truncate very long content to save tokens (keep first 8000 chars)
             truncated_content = page_content[:8000]
             
-            prompt = f"""Your task: EXACTLY REPLICATE the product data from this e-commerce page. DO NOT create, infer, or modify anything.
+            prompt = f"""Your task: EXACTLY REPLICATE the product data from this e-commerce page.
+
+🚨 CRITICAL: DO NOT GENERATE, INVENT, ESTIMATE, OR CREATE ANYTHING 🚨
+- Extract ONLY what ACTUALLY EXISTS on the reference website
+- DO NOT generate or invent any product prices or variants
+- DO NOT create additional variants beyond what exists on the page
+- DO NOT estimate or guess prices
+- DO NOT modify, alter, or enhance any data
 
 URL: {page_url}
 
@@ -160,26 +167,32 @@ Return a JSON object with this structure:
    - If the page has multiple description sections, include ALL of them
    - Use proper HTML tags for structure and readability
 
-2. **REPLICATE EVERY VARIANT EXACTLY AS IT APPEARS**:
-   - **CRITICAL: Check for JSON-LD structured data FIRST** (most reliable source):
+2. **FETCH ALL PRODUCT VARIANTS EXACTLY AS THEY APPEAR - NO INVENTION**:
+
+   🚨 CRITICAL VARIANT RULES:
+   - Extract EVERY SINGLE variant that exists on the reference website
+   - DO NOT generate, invent, or create ANY variants that don't exist on the page
+   - DO NOT skip any variants - if website has 6 options, extract all 6
+   - DO NOT combine or summarize variants
+   - Copy EXACT text from each variant option (preserve units, capitalization, spacing)
+
+   **PRIORITY 1: JSON-LD structured data** (most reliable):
      * Look for <script type="application/ld+json"> tags
      * Extract variant data from Schema.org Product markup
-     * Common pattern: "offers": [{{"sku": "ABC-2", "price": "114.00"}}, {{"sku": "ABC-3", "price": "138.00"}}...]
-     * SKUs often encode variant info: "TRP608-2" = 2ft, "TRP608-3" = 3ft, etc.
-     * Extract ALL offers/variants from the JSON-LD data with their exact prices
+     * Pattern: "offers": [{{"sku": "ABC-2", "price": "114.00"}}, {{"sku": "ABC-3", "price": "138.00"}}...]
+     * SKUs often encode variant: "TRP608-2" = 2ft, "TRP608-3" = 3ft, etc.
+     * Extract ALL offers/variants from JSON-LD with their EXACT prices
 
-   - Also look for variant selectors in HTML: <select>, <option>, radio buttons, data attributes
-   - Common HTML patterns:
+   **PRIORITY 2: HTML variant selectors**:
      * <select name="size"><option>1ft</option><option>2ft</option>... → Extract ALL options
      * <input type="radio" value="Small"> → Extract ALL radio values
      * data-variant="Red" or data-size="Large" → Extract from data attributes
-     * JavaScript variant arrays: variants: [{{"title": "1ft"}}, {{"title": "2ft"}}...] → Extract ALL
+     * JavaScript: variants: [{{"title": "1ft"}}, {{"title": "2ft"}}...] → Extract ALL
 
-   - If the page shows a dropdown with "1ft, 2ft, 3ft, 4ft, 5ft, 6ft" → Create 6 separate variant entries
-   - If the page shows "Small, Medium, Large" → Create 3 variant entries
-   - DO NOT skip, combine, or summarize variants
-   - DO NOT create variants that don't exist on the page
-   - Copy the EXACT text from each option (including units, capitalization, spacing)
+   **Examples of EXACT extraction:**
+   - Page shows: "1ft, 2ft, 3ft, 4ft, 5ft, 6ft" → Create 6 variant entries (ALL of them)
+   - Page shows: "Small, Medium, Large" → Create 3 variant entries (ALL of them)
+   - Page shows: ONE option → Create 1 variant entry (not more, not less)
 
 3. **USE THE EXACT OPTION NAME FROM THE PAGE**:
    - If the page says "Select Length:" → Use "Length" as the option name
@@ -194,43 +207,50 @@ Return a JSON object with this structure:
    - If page shows "Small (S)" → use "Small (S)" (not just "Small")
    - Preserve all formatting, units, and punctuation
 
-5. **EXTRACT ACTUAL PRICES FOR EACH VARIANT** - CRITICAL FOR SUCCESS:
+5. **EXTRACT ORIGINAL PRICES EXACTLY AS SHOWN - NO INVENTION**:
 
-   **PRIORITY 1: JSON-LD structured data in <script type="application/ld+json">**:
+   🚨 CRITICAL PRICE RULES:
+   - Extract the ORIGINAL PRICE exactly as it appears on the reference website
+   - DO NOT generate, invent, estimate, or guess any prices
+   - DO NOT modify price values (backend will multiply by 2 automatically for markup)
+   - Extract EXACT original prices from the source - system handles pricing strategy
+   - Each variant MUST have its EXACT original price from the website
+   - If absolutely no price found anywhere, skip the product entirely
+
+   **PRIORITY 1: JSON-LD structured data** (most accurate):
    ```json
-   Example to look for:
+   Look for <script type="application/ld+json">:
    {
      "@type": "Product",
      "offers": [
-       {"sku": "TRP608-2", "price": "114.00"},
-       {"sku": "TRP608-3", "price": "138.00"},
-       {"sku": "TRP608-4", "price": "162.00"}
+       {"sku": "TRP608-2", "price": "114.00"},  ← Extract EXACTLY: 114.00
+       {"sku": "TRP608-3", "price": "138.00"},  ← Extract EXACTLY: 138.00
+       {"sku": "TRP608-4", "price": "162.00"}   ← Extract EXACTLY: 162.00
      ]
    }
    ```
-   - Extract price for EACH offer/SKU
-   - Match SKU to variant (e.g., "TRP608-2" = 2ft variant → price: "114.00")
-   - This is the MOST RELIABLE source for accurate prices
+   - Extract EXACT original price for EACH offer/SKU
+   - Match SKU to variant (e.g., "TRP608-2" = 2ft)
+   - This is the MOST RELIABLE source
 
    **PRIORITY 2: JavaScript product data**:
    - Look for: var product =, window.productData =, data-product-json=
-   - Pattern: variants array with id, title, price in cents
-   - Example: {{"id": 123, "title": "2ft", "price": 5500}} (5500 cents = 55.00)
+   - Example: {{"id": 123, "title": "2ft", "price": 5500}} (price in cents)
    - Convert cents to decimal: 5500 → "55.00"
+   - Extract EXACT original values from code
 
    **PRIORITY 3: HTML visible prices**:
-   - Pattern 1: "£114.00" next to "2ft" option in dropdown
-   - Pattern 2: Price table showing "2ft: £114.00 | 3ft: £138.00"
-   - Pattern 3: Data attributes: `data-variant-price="114.00"`
-   - Pattern 4: "From £114.00" means base price (use for all if no variant prices found)
+   - "£114.00" next to "2ft" → Extract original: 114.00
+   - "2ft: £114.00 | 3ft: £138.00" → Extract each original individually
+   - data-variant-price="114.00" → Extract original: 114.00
+   - "From £114.00" → Use as base original price
 
-   **CRITICAL RULES**:
-   - Each variant MUST have a price > 0
-   - If you find prices for variants, assign them correctly
+   **RULES**:
+   - Each variant price MUST be > 0
+   - Extract ORIGINAL prices only (system doubles them automatically)
    - If all variants share one price, use that for all
-   - DO NOT leave prices as 0.00, null, or empty
-   - If absolutely no price found, skip the product entirely
-   - Remove currency symbols (£, $, €) but keep the number
+   - DO NOT use 0.00, null, or empty
+   - Remove currency symbols (£, $, €) keep numbers
 
 6. **FAITHFUL IMAGE EXTRACTION**:
    - Extract ONLY images that appear in the page content
