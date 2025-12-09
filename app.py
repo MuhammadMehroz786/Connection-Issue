@@ -2430,6 +2430,7 @@ def run_workflow(task_id, url, max_products):
                     logger.error(f"[{task_id}] Failed to save product {idx}")
 
             except Exception as e:
+                products_failed += 1
                 logger.error(f"[{task_id}] Error processing product {idx}: {str(e)}", exc_info=True)
                 continue
 
@@ -2632,8 +2633,12 @@ def run_firecrawl_workflow(task_id, url, max_pages):
 
         # STEP 3: Save products to database
         logger.info(f"[{task_id}] 💾 STEP 3: Saving products to database")
+        logger.info(f"[{task_id}] 📊 Total products extracted: {len(products)}")
 
         job = db_service.get_scrape_job(task_id)
+
+        products_saved = 0
+        products_failed = 0
 
         for idx, product_data in enumerate(products, 1):
             try:
@@ -2681,12 +2686,15 @@ def run_firecrawl_workflow(task_id, url, max_pages):
                 saved_product = db_service.save_product(job.id, shopify_product, product_data)
 
                 if saved_product:
+                    products_saved += 1
                     db_service.update_scrape_job(task_id, products_processed=idx)
                     logger.info(f"[{task_id}] ✅ Saved product {idx} to database")
                 else:
+                    products_failed += 1
                     logger.error(f"[{task_id}] ❌ Failed to save product {idx}")
 
             except Exception as e:
+                products_failed += 1
                 logger.error(f"[{task_id}] Error processing product {idx}: {str(e)}", exc_info=True)
                 continue
 
@@ -2697,8 +2705,16 @@ def run_firecrawl_workflow(task_id, url, max_pages):
             completed_at=datetime.utcnow()
         )
 
-        logger.info(f"[{task_id}] 🎉 Firecrawl workflow completed - {len(products)} products saved to database")
+        # Final summary
+        logger.info(f"[{task_id}] ═══════════════════════════════════════════════════════════")
+        logger.info(f"[{task_id}] 🎉 SCRAPING COMPLETED SUCCESSFULLY")
+        logger.info(f"[{task_id}] ═══════════════════════════════════════════════════════════")
+        logger.info(f"[{task_id}] 📊 Total Products Extracted: {len(products)}")
+        logger.info(f"[{task_id}] ✅ Successfully Saved: {products_saved}")
+        if products_failed > 0:
+            logger.info(f"[{task_id}] ❌ Failed to Save: {products_failed}")
         logger.info(f"[{task_id}] 📋 Review products and push to Shopify from Products page")
+        logger.info(f"[{task_id}] ═══════════════════════════════════════════════════════════")
 
     except Exception as e:
         logger.error(f"[{task_id}] Firecrawl workflow error: {str(e)}", exc_info=True)
