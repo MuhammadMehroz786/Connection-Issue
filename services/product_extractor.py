@@ -213,8 +213,9 @@ Return a JSON object with this structure:
    - This is the MOST RELIABLE source for accurate prices
 
    **PRIORITY 2: JavaScript product data**:
-   - Look for: `var product = {`, `window.productData =`, `data-product-json=`
-   - Pattern: `variants: [{"id": 123, "title": "2ft", "price": 5500}]` (price in cents)
+   - Look for: var product =, window.productData =, data-product-json=
+   - Pattern: variants array with id, title, price in cents
+   - Example: {{"id": 123, "title": "2ft", "price": 5500}} (5500 cents = 55.00)
    - Convert cents to decimal: 5500 → "55.00"
 
    **PRIORITY 3: HTML visible prices**:
