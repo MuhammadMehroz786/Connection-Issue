@@ -1439,7 +1439,20 @@ def process_single_product(source_product, ai_job_id, fast_mode, created_counter
     with app.app_context():
         try:
             product_id = source_product.id
-            logger.info(f"[AI Job {ai_job_id}] Processing product: {source_product.title}")
+
+            # Extract source URL for logging
+            source_product_url = "Unknown URL"
+            if source_product.original_data:
+                try:
+                    import json
+                    original_data = json.loads(source_product.original_data)
+                    source_product_url = original_data.get('source_url', 'Unknown URL')
+                except:
+                    pass
+
+            logger.info(f"[AI Job {ai_job_id}] 🔄 Processing product: {source_product.title}")
+            logger.info(f"[AI Job {ai_job_id}] 🔗 Source URL: {source_product_url}")
+            logger.info(f"[AI Job {ai_job_id}] 📦 Product ID: {product_id}")
 
             # Check if AI dupe already exists
             existing_dupe = AIProduct.query.filter_by(source_product_id=product_id).first()

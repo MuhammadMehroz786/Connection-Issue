@@ -194,20 +194,42 @@ Return a JSON object with this structure:
    - If page shows "Small (S)" → use "Small (S)" (not just "Small")
    - Preserve all formatting, units, and punctuation
 
-5. **EXTRACT ACTUAL PRICES FOR EACH VARIANT**:
-   - **PRIORITY 1: JSON-LD structured data** (most accurate):
-     * Extract prices from "offers" array in <script type="application/ld+json">
-     * Each offer has "price" field - use these exact values
-     * Match SKUs to variant sizes if SKU encodes size info
+5. **EXTRACT ACTUAL PRICES FOR EACH VARIANT** - CRITICAL FOR SUCCESS:
 
-   - **PRIORITY 2: HTML content**:
-     * Look for price variations by variant in the content
-     * Common patterns: "1ft: £25", "2ft - £30", "Small (£20)", size dropdown with prices
+   **PRIORITY 1: JSON-LD structured data in <script type="application/ld+json">**:
+   ```json
+   Example to look for:
+   {
+     "@type": "Product",
+     "offers": [
+       {"sku": "TRP608-2", "price": "114.00"},
+       {"sku": "TRP608-3", "price": "138.00"},
+       {"sku": "TRP608-4", "price": "162.00"}
+     ]
+   }
+   ```
+   - Extract price for EACH offer/SKU
+   - Match SKU to variant (e.g., "TRP608-2" = 2ft variant → price: "114.00")
+   - This is the MOST RELIABLE source for accurate prices
 
-   - If different variants have different prices, extract each one
-   - If all variants show the same price, use that price for all
-   - DO NOT guess or calculate prices
-   - DO NOT use £0.00 or 0.00 - if no price found, use null
+   **PRIORITY 2: JavaScript product data**:
+   - Look for: `var product = {`, `window.productData =`, `data-product-json=`
+   - Pattern: `variants: [{"id": 123, "title": "2ft", "price": 5500}]` (price in cents)
+   - Convert cents to decimal: 5500 → "55.00"
+
+   **PRIORITY 3: HTML visible prices**:
+   - Pattern 1: "£114.00" next to "2ft" option in dropdown
+   - Pattern 2: Price table showing "2ft: £114.00 | 3ft: £138.00"
+   - Pattern 3: Data attributes: `data-variant-price="114.00"`
+   - Pattern 4: "From £114.00" means base price (use for all if no variant prices found)
+
+   **CRITICAL RULES**:
+   - Each variant MUST have a price > 0
+   - If you find prices for variants, assign them correctly
+   - If all variants share one price, use that for all
+   - DO NOT leave prices as 0.00, null, or empty
+   - If absolutely no price found, skip the product entirely
+   - Remove currency symbols (£, $, €) but keep the number
 
 6. **FAITHFUL IMAGE EXTRACTION**:
    - Extract ONLY images that appear in the page content
