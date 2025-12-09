@@ -236,7 +236,7 @@ Return a JSON object with this structure:
 
    **PRIORITY 2: JavaScript product data**:
    - Look for: var product =, window.productData =, data-product-json=
-   - Example: {{"id": 123, "title": "2ft", "price": 5500}} (price in cents)
+   - Example: {{{{"id": 123, "title": "2ft", "price": 5500}}}} (price in cents)
    - Convert cents to decimal: 5500 → "55.00"
    - Extract EXACT original values from code
 
@@ -266,7 +266,7 @@ Return a JSON object with this structure:
    - Only extract what explicitly exists on the page
 
 8. **Single-variant products**:
-   - If NO selectors/dropdowns exist → option1="Default", options=[{{"name": "Title", "values": ["Default Title"]}}]
+   - If NO selectors/dropdowns exist → option1="Default", options=[{{{{"name": "Title", "values": ["Default Title"]}}}}]
    - Do NOT create fake variants for single-variant products
 
 9. Return ONLY valid JSON, no additional text
@@ -633,5 +633,4 @@ EXTRACT THE PRODUCT DATA EXACTLY AS IT APPEARS:"""
             }
         ]
         
-        logger.info(f"✅ Merged successfully: '{clean_title}' (now has {len(existing_variants)} variants)")
-
+        logger.info(f"✅ Merged successfully: '{base_title}' (now has {len(existing_variants)} variants)")
