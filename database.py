@@ -121,15 +121,22 @@ class DatabaseService:
                 elif isinstance(price_data, (int, float)):
                     price_data = str(price_data)
 
-                # CRITICAL: Skip zero-price variants - DO NOT SAVE to database
+                # CRITICAL: Handle zero/missing prices with fallback strategy
+                # Convert 0.00 to 0.01 placeholder for manual review instead of skipping
                 try:
                     price_float = float(price_data)
-                    if price_float <= 0.01:
-                        logger.warning(f"⏭️  SKIPPING zero-price variant: {variant_data.get('title')} (Price: £{price_float})")
-                        continue
-                except (ValueError, TypeError):
-                    logger.warning(f"⏭️  SKIPPING variant with invalid price: {variant_data.get('title')}")
-                    continue
+                    if price_float <= 0:
+                        logger.warning(f"⚠️  Zero/negative price detected for variant: {variant_data.get('title')} (Original: £{price_float})")
+                        logger.info(f"   → Converting to £0.01 placeholder for manual review")
+                        price_data = "0.01"
+                        price_float = 0.01
+                    elif price_float == 0.01:
+                        logger.info(f"⚠️  Placeholder price detected for manual review: {variant_data.get('title')} (Price: £{price_float})")
+                except (ValueError, TypeError) as e:
+                    logger.warning(f"⚠️  Invalid price format for variant: {variant_data.get('title')} (Value: '{price_data}')")
+                    logger.info(f"   → Converting to £0.01 placeholder for manual review")
+                    price_data = "0.01"
+                    price_float = 0.01
 
                 # Extract compare_at_price - handle both string and dict formats
                 compare_at_price_data = variant_data.get('compare_at_price')

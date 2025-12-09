@@ -215,7 +215,8 @@ Return a JSON object with this structure:
    - DO NOT modify price values (backend will multiply by 2 automatically for markup)
    - Extract EXACT original prices from the source - system handles pricing strategy
    - Each variant MUST have its EXACT original price from the website
-   - If absolutely no price found anywhere, skip the product entirely
+   - If price not found after checking all sources, use "0.01" as placeholder for manual review
+   - NEVER leave price as null or empty - use "0.01" if no price found anywhere
 
    **PRIORITY 1: JSON-LD structured data** (most accurate):
    ```json
